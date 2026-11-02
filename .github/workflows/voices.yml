@@ -1,0 +1,27 @@
+# Makes the voice lines of an episode with edge-tts. Text comes from the private repo, the zip goes back there
+# (release "voices", file <episode>_voices.zip). Nothing about the channels is stored or printed here.
+name: voices
+on:
+  workflow_dispatch:
+    inputs:
+      episode: {description: 'Folder in episodes/, e.g. southpole', required: true}
+      content_ref: {description: 'Branch of the content repo', default: 'main'}
+env:
+  GH_TOKEN: ${{ secrets.CONTENT_TOKEN }}
+  REPO: ${{ vars.CONTENT_REPO }}
+jobs:
+  voices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: {repository: '${{ vars.CONTENT_REPO }}', token: '${{ secrets.CONTENT_TOKEN }}', path: content-src, ref: '${{ inputs.content_ref }}'}
+      - run: pip install -q edge-tts
+      - name: Voices
+        env: {EPISODE: '${{ inputs.episode }}'}
+        run: |
+          set -euo pipefail
+          python3 scripts/voices.py "content-src/episodes/$EPISODE" voices
+          (cd voices && zip -qr "../${EPISODE}_voices.zip" .)
+          gh release view voices --repo "$REPO" >/dev/null 2>&1 || gh release create voices --repo "$REPO" --title voices --notes "voice lines"
+          gh release upload voices "${EPISODE}_voices.zip" --repo "$REPO" --clobber
