@@ -32,7 +32,15 @@ jobs:
         with: {node-version: 22, cache: npm}
       - run: scripts/ci_prepare.sh
       - id: plan
-        run: echo "matrix=$(node scripts/plan.mjs '${{ inputs.episode }}' '${{ inputs.langs }}' '${{ inputs.chunks }}')" >> "$GITHUB_OUTPUT"
+        env:
+          EPISODE: ${{ inputs.episode }}
+          LANGS: ${{ inputs.langs }}
+          CHUNKS: ${{ inputs.chunks }}
+        run: |
+          EPISODE="${EPISODE// /}"
+          node scripts/plan.mjs "$EPISODE" "$LANGS" "$CHUNKS" > matrix.json
+          [ -s matrix.json ] || { echo "::error::Empty chunk plan"; exit 1; }
+          echo "matrix=$(cat matrix.json)" >> "$GITHUB_OUTPUT"
       - name: Temporary release for chunks
         run: gh release create "$TMP_TAG" --repo "$REPO" --prerelease --title tmp --notes "temporary render chunks"
 
@@ -72,6 +80,7 @@ jobs:
           LANGS: ${{ inputs.langs }}
         run: |
           set -euo pipefail
+          EPISODE="${EPISODE// /}"
           mkdir -p out
           gh release view videos --repo "$REPO" >/dev/null 2>&1 || gh release create videos --repo "$REPO" --title videos --notes "rendered videos"
           ep="${EPISODE,,}"
