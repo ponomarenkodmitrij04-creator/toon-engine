@@ -1,0 +1,27 @@
+{
+  "name": "toon-stories",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "stills": "node scripts/render.mjs stills",
+    "render": "node scripts/render.mjs render",
+    "preview": "node scripts/render.mjs preview",
+    "sheet": "node scripts/render.mjs sheet"
+  },
+  "dependencies": {
+    "@fontsource/montserrat": "^5.3.0",
+    "@react-three/fiber": "9.8.2",
+    "@remotion/cli": "4.0.536",
+    "@remotion/fonts": "^4.0.536",
+    "@remotion/google-fonts": "4.0.536",
+    "@remotion/renderer": "4.0.536",
+    "@remotion/three": "4.0.536",
+    "@types/react": "^19.3.0",
+    "@types/three": "0.186.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.536",
+    "three": "0.186.1",
+    "typescript": "^5.6.0"
+  }
+}

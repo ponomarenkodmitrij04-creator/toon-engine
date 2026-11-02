@@ -1,0 +1,90 @@
+# Renders an episode in parallel chunks. Content (scripts, voices, finished videos) lives in a private repo,
+# so nothing about the channels is stored or printed here. Needs: variable CONTENT_REPO (owner/name)
+# and secret CONTENT_TOKEN (fine-grained token, Contents: read and write on the content repo).
+name: render
+on:
+  workflow_dispatch:
+    inputs:
+      episode: {description: 'Episode id prefix, e.g. Day3', required: true}
+      langs: {description: 'Languages, comma separated', default: 'EN,DE,ES'}
+      chunks: {description: 'Chunks per language', default: '16'}
+      content_ref: {description: 'Branch of the content repo', default: 'main'}
+
+env:
+  GH_TOKEN: ${{ secrets.CONTENT_TOKEN }}
+  REPO: ${{ vars.CONTENT_REPO }}
+  TMP_TAG: tmp-${{ github.run_id }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: {repository: '${{ vars.CONTENT_REPO }}', token: '${{ secrets.CONTENT_TOKEN }}', path: content-src, ref: '${{ inputs.content_ref }}'}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm}
+      - run: scripts/ci_prepare.sh
+      - id: plan
+        run: echo "matrix=$(node scripts/plan.mjs '${{ inputs.episode }}' '${{ inputs.langs }}' '${{ inputs.chunks }}')" >> "$GITHUB_OUTPUT"
+      - name: Temporary release for chunks
+        run: gh release create "$TMP_TAG" --repo "$REPO" --prerelease --title tmp --notes "temporary render chunks"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: {repository: '${{ vars.CONTENT_REPO }}', token: '${{ secrets.CONTENT_TOKEN }}', path: content-src, ref: '${{ inputs.content_ref }}'}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm}
+      - run: scripts/ci_prepare.sh
+      - name: Render chunk
+        run: >
+          npx remotion render src/index.ts "${{ matrix.comp }}" "out/chunk-${{ matrix.name }}.mp4"
+          --frames=${{ matrix.a }}-${{ matrix.b }} --muted --codec=h264 --crf=18 --gl=swangle
+          --concurrency=$(nproc) --log=error
+      - name: Send chunk to the private repo
+        run: gh release upload "$TMP_TAG" "out/chunk-${{ matrix.name }}.mp4" --repo "$REPO"
+
+  join:
+    needs: render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: {repository: '${{ vars.CONTENT_REPO }}', token: '${{ secrets.CONTENT_TOKEN }}', path: content-src, ref: '${{ inputs.content_ref }}'}
+      - run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Join chunks, add sound, publish to the private repo
+        env:
+          EPISODE: ${{ inputs.episode }}
+          LANGS: ${{ inputs.langs }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          gh release view videos --repo "$REPO" >/dev/null 2>&1 || gh release create videos --repo "$REPO" --title videos --notes "rendered videos"
+          ep="${EPISODE,,}"
+          for L in $(echo "$LANGS" | tr ',' ' '); do
+            L="${L^^}"; l="${L,,}"
+            mkdir -p "chunks/$L"
+            gh release download "$TMP_TAG" --repo "$REPO" -p "chunk-$L-*.mp4" -D "chunks/$L"
+            scripts/join.sh "chunks/$L" "content-src/public/$ep/$l/mix.wav" "out/$EPISODE-$L.mp4"
+            vd=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "out/$EPISODE-$L.mp4")
+            ad=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "content-src/public/$ep/$l/mix.wav")
+            python3 -c "import sys; v,a=float('$vd'),float('$ad'); sys.exit(0 if abs(v-a)<0.15 else 'duration mismatch: video %s audio %s' % (v,a))"
+            gh release upload videos "out/$EPISODE-$L.mp4" --repo "$REPO" --clobber
+          done
+
+  cleanup:
+    needs: [plan, render, join]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release delete "$TMP_TAG" --repo "$REPO" --cleanup-tag -y
