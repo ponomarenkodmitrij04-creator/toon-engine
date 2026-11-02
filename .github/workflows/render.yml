@@ -21,6 +21,10 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
+      - name: Check settings
+        run: |
+          [ -n "$REPO" ] || { echo "::error::Variable CONTENT_REPO is empty. Add it in Settings > Secrets and variables > Actions > Variables."; exit 1; }
+          [ -n "$GH_TOKEN" ] || { echo "::error::Secret CONTENT_TOKEN is empty. Add it in Settings > Secrets and variables > Actions > Secrets."; exit 1; }
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with: {repository: '${{ vars.CONTENT_REPO }}', token: '${{ secrets.CONTENT_TOKEN }}', path: content-src, ref: '${{ inputs.content_ref }}'}
