@@ -20,7 +20,7 @@ async def main(src, out):
         for i, ln in enumerate(cfg["lines"]):
             for attempt in range(14):
                 try:
-                    a, w = await asyncio.wait_for(one(ln["say"], cfg["voice"], cfg["rate"], cfg["pitch"]), 30); break
+                    a, w = await asyncio.wait_for(one(ln["say"], ln.get("voice", cfg["voice"]), ln.get("rate", cfg["rate"]), ln.get("pitch", cfg["pitch"])), 30); break
                 except Exception as e:
                     print("retry", code, i, type(e).__name__, flush=True); await asyncio.sleep(min(90, 5 * 2 ** attempt) + random.random() * 5)
             else:
