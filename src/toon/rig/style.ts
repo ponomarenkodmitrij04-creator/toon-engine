@@ -11,6 +11,7 @@ export type Look = {
   eyeWhite: string; pupil: string; mouth: string; tongue: string;
   hairStyle?: 'boy' | 'bob' | 'bald'; // default 'boy'
   lashes?: boolean; mustache?: string; noHood?: boolean; // noHood: sweater/shirt with a round collar
+  arm?: string; // bare arms or another sleeve colour, no cuff
 };
 
 // the "you" hero of the Blackout/What-if videos: young guy, navy hoodie

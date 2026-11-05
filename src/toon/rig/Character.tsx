@@ -156,8 +156,8 @@ export const Character: React.FC<{
       </g>
       {between}
       <g transform={tf}>
-        <Limb a={shL} b={armL.mid} c={armL.end} w1={46} w2={40} color={L.top} cuff={L.cuff} />
-        <Limb a={shR} b={armR.mid} c={armR.end} w1={46} w2={40} color={L.top} cuff={L.cuff} />
+        <Limb a={shL} b={armL.mid} c={armL.end} w1={46} w2={40} color={L.arm ?? L.top} cuff={L.arm ? undefined : L.cuff} />
+        <Limb a={shR} b={armR.mid} c={armR.end} w1={46} w2={40} color={L.arm ?? L.top} cuff={L.arm ? undefined : L.cuff} />
         {heldR?.(armR.end, angOf(armR.mid, armR.end))}
         {heldL?.(armL.end, angOf(armL.mid, armL.end))}
         <Hand p={armL.end} ang={angOf(armL.mid, armL.end)} grip={q.gripL} th={-1} look={L} />
