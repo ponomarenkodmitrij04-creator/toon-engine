@@ -59,13 +59,13 @@ const Hand: React.FC<{p: P; ang: number; grip: Grip; th: number; look: Look}> = 
 };
 
 // Brass watch: oversized on purpose, it has to read on a small avatar.
-export const WatchBody: React.FC<{cx: number; cy: number; r: number; text: string; font?: string}> = ({cx, cy, r, text, font}) => (
+export const WatchBody: React.FC<{cx: number; cy: number; r: number; text: string; font?: string; mirror?: boolean}> = ({cx, cy, r, text, font, mirror}) => (
   <g>
     <rect x={cx - r * 0.16} y={cy - r - r * 0.34} width={r * 0.32} height={r * 0.36} rx={r * 0.08} fill="#e9b949" stroke={INK} strokeWidth={OW} />
     <circle cx={cx} cy={cy} r={r} fill="#e9b949" stroke={INK} strokeWidth={OW} />
     <circle cx={cx} cy={cy} r={r * 0.81} fill="#181b2c" stroke="#9c6f1e" strokeWidth={r * 0.07} />
     <path d={`M ${cx - r * 0.67} ${cy - r * 0.28} A ${r * 0.69} ${r * 0.69} 0 0 1 ${cx - r * 0.1} ${cy - r * 0.69}`} stroke="#ffffff" strokeOpacity={0.3} strokeWidth={r * 0.08} fill="none" strokeLinecap="round" />
-    <text x={cx} y={cy + r * 0.2} textAnchor="middle" fontFamily={font ?? 'Montserrat, Arial, sans-serif'} fontWeight={900} fontSize={r * 0.54} fill="#ff3b30">{text}</text>
+    <text transform={mirror ? `translate(${2 * cx} 0) scale(-1 1)` : undefined} x={cx} y={cy + r * 0.2} textAnchor="middle" fontFamily={font ?? 'Montserrat, Arial, sans-serif'} fontWeight={900} fontSize={r * 0.54} fill="#ff3b30">{text}</text>
   </g>
 );
 
@@ -76,12 +76,12 @@ export const Chain: React.FC<{d: string}> = ({d}) => (
   </g>
 );
 
-export const NeckWatch: React.FC<{T: number; text: string}> = ({T, text}) => {
+export const NeckWatch: React.FC<{T: number; text: string; mirror?: boolean}> = ({T, text, mirror}) => {
   const cy = T + 138, r = 58;
   return (
     <g>
       {[-1, 1].map((s) => <Chain key={s} d={`M ${s * 34} ${T + 8} Q ${s * 40} ${T + 58} ${s * 7} ${cy - r - 18}`} />)}
-      <WatchBody cx={0} cy={cy} r={r} text={text} />
+      <WatchBody cx={0} cy={cy} r={r} text={text} mirror={mirror} />
     </g>
   );
 };
@@ -94,7 +94,8 @@ export const Character: React.FC<{
   heldR?: (wrist: P, ang: number) => React.ReactNode; // item in the right hand, drawn under the fingers
   heldL?: (wrist: P, ang: number) => React.ReactNode; // same for the left hand
   watch?: string;                               // big watch on a chain over the chest; the string is the time shown
-}> = ({pose: q, look: L, id, between, heldR, heldL, watch}) => {
+  watchMirror?: boolean;                        // the figure is drawn inside a flip: keep the digits readable
+}> = ({pose: q, look: L, id, between, heldR, heldL, watch, watchMirror}) => {
   const by = 1 + q.breathe * 0.012;
   const T = -TORSO * by - q.lift;
   const tf = `translate(${q.x} ${q.y}) scale(${q.s}) rotate(${q.lean})`;
@@ -149,7 +150,7 @@ export const Character: React.FC<{
           </g>
         ))}
         </>}
-        {watch !== undefined && <NeckWatch T={T} text={watch} />}
+        {watch !== undefined && <NeckWatch T={T} text={watch} mirror={watchMirror} />}
         <g transform={`translate(${neckTop.x} ${neckTop.y}) rotate(${q.headTilt}) translate(${q.headDx} ${-82 + q.headDy})`}>
           <Head face={q.face} look={L} id={`${id}-h`} />
         </g>
